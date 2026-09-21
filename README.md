@@ -24,7 +24,7 @@ current. A machine that is scanned again updates its own row instead of adding a
 
 Identity and location, hardware, storage, displays, network, the signed-in user, mail account and
 security state — 28 fields, defined once in [`src/config/schema.py`](src/config/schema.py), which is
-the single source of truth for collection, validation, and both writers.
+the single source of truth for collection, validation and the sheet writer.
 
 | Group | Fields |
 |---|---|
@@ -36,6 +36,29 @@ the single source of truth for collection, validation, and both writers.
 | Network | IP Address, Subnet, MAC Address |
 | Mail & security | Outlook Email, Antivirus, VPN |
 | Record | Created At, Updated At |
+
+## Where the AI comes in
+
+Collecting the facts is deterministic: Windows reports them and AssetIQ reads them. The
+**intelligence layer** runs after collection and does what a careful IT admin would do with the raw
+record — cross-checks it, spots what doesn't add up, and decides what needs a human. It never fills
+in a value Windows could not report; it flags it for review instead.
+
+| Capability | What it decides | Example |
+|---|---|---|
+| Device classification | Whether the chassis reading agrees with the other signals — model name and battery | Chassis says *Desktop* but the model is a *ThinkPad*: flagged for review, never silently changed |
+| Consistency checking | Whether the record contradicts itself | A "laptop" with a 20-inch built-in screen is really an all-in-one till reporting laptop firmware values |
+| Anomaly detection | Whether a value sits outside the normal range for the fleet | 2 GB of RAM, or an 8 TB disk, in an office fleet |
+| Fleet-level duplicate detection | Whether this machine collides with a different row in the central sheet | Same computer name with a different serial: a renamed or re-imaged machine |
+| Data-quality scoring | How complete and trustworthy each record is | The 0–100% score in the window, and the Review / Missing badges |
+
+**Rule-based on purpose.** V1 uses explainable, rule-based inference rather than a trained model:
+every flag has to carry a reason the IT team can check, and give the same answer on the next run —
+and there was no labelled history to learn from yet. The rules live in
+[`src/services/intelligence_service.py`](src/services/intelligence_service.py) and
+[`src/services/validation_service.py`](src/services/validation_service.py). The central sheet
+AssetIQ builds up *is* that history, which makes learned models the next step: replacement
+planning, fleet-wide anomaly detection, and plain-language questions over the inventory.
 
 ## Engineering notes
 
@@ -124,7 +147,7 @@ src/
 ├── scan_runner.py           one scan, shared by every mode
 ├── collector_service.py     runs the collectors, then normalise → validate → score
 ├── collectors/              one file per domain, each independent and failure-isolated
-├── services/                Google Sheets upsert, validation, normalisation, checks
+├── services/                Google Sheets upsert, validation, normalisation, the intelligence layer
 ├── config/                  the 28-field schema, identity matching, sheet presentation
 ├── gui/                     the window, drawn widgets, logo outlines
 └── utils/                   WMI/COM handling, paths, logging
