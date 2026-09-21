@@ -1,0 +1,22 @@
+# Credentials and site configuration -- never commit these
+service_account.json
+config.json
+src/config.json
+src/service_account.json
+config/config.json
+config/service_account.json
+
+# Anything the program or the build produces
+__pycache__/
+*.pyc
+build/
+dist/
+dist.zip
+backup/
+output/
+*.log
+*.xlsx
+
+# Environments
+.venv/
+venv/

@@ -1,0 +1,11 @@
+{
+  "company": "YOUR COMPANY",
+  "location": null,
+  "vlan_location_map": {
+    "10.20.30.": "Head Office",
+    "10.20.31.": "Branch Office"
+  },
+  "google_spreadsheet_id": "PUT-YOUR-SPREADSHEET-ID-HERE",
+  "google_credentials_path": "service_account.json",
+  "google_worksheet_name": "Equipment Audit"
+}
