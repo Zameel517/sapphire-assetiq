@@ -1,5 +1,7 @@
 # Sapphire AssetIQ
 
+[![CI](https://github.com/Zameel517/sapphire-assetiq/actions/workflows/ci.yml/badge.svg)](https://github.com/Zameel517/sapphire-assetiq/actions/workflows/ci.yml)
+
 **An IT asset inventory agent for Windows fleets.** It runs at logon, reads 28 facts about the
 machine it is on, and writes them as **one row per computer** into a central Google Sheet —
 replacing the "one Excel file per PC, collected by hand" process it was built to kill.
@@ -19,6 +21,25 @@ every answer was out of date.
 
 AssetIQ inverts that: each machine reports **itself**, every logon, into one sheet that is always
 current. A machine that is scanned again updates its own row instead of adding another.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Logon script<br/>(Active Directory)"] --> B["SapphireAssetIQ.exe"]
+    B --> C["Collectors<br/>WMI · registry · EDID · PowerShell"]
+    C --> D["Normalise"]
+    D --> E["Validate and<br/>score quality"]
+    E --> F["Intelligence layer<br/>classify · consistency ·<br/>anomalies · duplicates"]
+    F --> G{"Machine already<br/>in the sheet?"}
+    G -- yes --> H["Update its row"]
+    G -- no --> I["Insert a new row"]
+    H --> J[("Central Google Sheet")]
+    I --> J
+```
+
+Every step runs on the machine itself, at logon, with nothing installed and nothing left behind
+except one small log per run under `%LOCALAPPDATA%`.
 
 ## What it collects
 
@@ -139,6 +160,18 @@ No window, no console. Exit code `0` means the row was written.
 > can only read and execute, and rotate the key if a copy leaves the domain. **A build of this
 > program should never be published** — the key can be recovered from it.
 
+## Tests
+
+```powershell
+pip install pytest
+python -m pytest
+```
+
+The tests cover the logic that decides what ends up in the sheet: identity matching (including the
+messy cells real sheets contain), VLAN-based location, the asset-tag fallback, the 28-field schema,
+and the drawn icon. GitHub Actions runs them on Windows for every push, together with a compile check
+and a guard that fails the build if a credential is ever committed.
+
 ## Layout
 
 ```
@@ -152,6 +185,8 @@ src/
 ├── gui/                     the window, drawn widgets, logo outlines
 └── utils/                   WMI/COM handling, paths, logging
 tools/                       icon + version resource, brand logo importer
+tests/                       unit tests (pytest)
+.github/workflows/ci.yml     CI: install, compile, test, credential guard
 ```
 
 A collector that fails never kills the scan: every field degrades to `missing` on its own and the

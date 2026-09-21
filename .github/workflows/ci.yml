@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Compile every source file
+        run: python -W error::SyntaxWarning -m compileall -q src tools
+
+      - name: Unit tests
+        run: python -m pytest -q
+
+      - name: No credentials committed
+        shell: bash
+        run: |
+          if git ls-files | grep -Ei '(^|/)(service_account|config)\.json$'; then
+            echo "::error::A credentials or site configuration file is committed"
+            exit 1
+          fi
+          # the workflow folder is skipped: this file contains the pattern itself
+          if git grep -nE 'BEGIN (RSA )?PRIVATE KEY|"private_key_id"' -- . ':!.github/workflows/'; then
+            echo "::error::A private key is committed"
+            exit 1
+          fi
+          echo "No credentials in the repository."
